@@ -44,6 +44,7 @@ export const LOCAL_PREF_KEYS = [
   'machineRailEnabled',
   // Recent-agent switcher
   'recentAgents',
+  'browserWebsiteDarkMode',
   // Window chrome, release notes, feature codes
   'menuBarAutoHide',
   'lastSeenReleaseNotesVersion',

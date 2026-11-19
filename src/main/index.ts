@@ -153,6 +153,11 @@ import {
 } from './utils/graceful-shutdown-runner';
 import { handleUncaughtException, handleUnhandledRejection } from './utils/process-error-handlers';
 import { isWebviewPopupWindow, setupWebviewSecurity } from './webview-security';
+import {
+  isBrowserWebsiteDarkModeEnabled,
+  setBrowserWebsiteDarkModeEnabled,
+  setupBrowserWebsiteDarkMode,
+} from './browser-website-dark-mode';
 import { getAppWindows, isOffscreenWindow } from './offscreen-window';
 import { attachAppCommandHistoryNavigation } from './app-command-navigation';
 import { attachSwipeHistoryNavigation } from './swipe-navigation';
@@ -708,6 +713,7 @@ const bootFlow = app.whenReady().then(async () => {
 
   // SECURITY: Setup webview security handlers early, before any windows are created
   setupWebviewSecurity();
+  await setupBrowserWebsiteDarkMode();
   setupMetaClipboardShortcuts();
   setupRecentAgentPageKeys();
 
@@ -1495,6 +1501,10 @@ const bootFlow = app.whenReady().then(async () => {
       fileMenu,
       buildNativeEditMenu(isMacOS),
       buildNativeViewMenu(isMacOS, {
+        websiteDarkMode: {
+          enabled: isBrowserWebsiteDarkModeEnabled(),
+          setEnabled: setBrowserWebsiteDarkModeEnabled,
+        },
         reload: () => {
           const focusedWindow = BrowserWindow.getFocusedWindow();
           if (focusedWindow && !focusedWindow.isDestroyed()) {
