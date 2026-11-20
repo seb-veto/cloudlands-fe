@@ -151,6 +151,7 @@ import {
   runGracefulShutdown,
   type GracefulShutdownOptions,
 } from './utils/graceful-shutdown-runner';
+import { startErrorReporting } from './error-reporting';
 import { handleUncaughtException, handleUnhandledRejection } from './utils/process-error-handlers';
 import { isWebviewPopupWindow, setupWebviewSecurity } from './webview-security';
 import { getAppWindows, isOffscreenWindow } from './offscreen-window';
@@ -490,6 +491,9 @@ import {
 } from './protocol-handlers.js';
 
 const logger = new Logger('Main');
+const errorReporting = isIsolatedTestBuild()
+  ? undefined
+  : startErrorReporting(app, process.env.INTENT_ERROR_REPORTING_DSN);
 
 let cdpMcpServer: CdpMcpBridge | null = null;
 let isShuttingDown = false;
@@ -502,10 +506,12 @@ let deepLinkStartupPassDone = false;
 // Global error handlers to prevent silent crashes
 process.on('uncaughtException', (error) => {
   handleUncaughtException(logger, error);
+  errorReporting?.uncaught(error);
 });
 
 process.on('unhandledRejection', (reason, promise) => {
   handleUnhandledRejection(logger, reason, promise);
+  errorReporting?.rejected(reason);
 });
 
 // Graceful SIGINT/SIGTERM handlers are installed at the start of the
@@ -540,7 +546,13 @@ async function gracefulShutdown(options: GracefulShutdownOptions = {}) {
       onPersistError: (error) => {
         logger.warn('Failed to save window frames during shutdown:', error);
       },
-      cleanup: performGracefulShutdown,
+      cleanup: async () => {
+        try {
+          await performGracefulShutdown();
+        } finally {
+          await errorReporting?.flush();
+        }
+      },
       onHardExit: () => {
         logger.warn(
           // i18n-ignore (developer log message)
